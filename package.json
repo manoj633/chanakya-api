@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Backend for chanakya app",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/manoj633/chanakya-api/issues"
   },
-  "homepage": "https://github.com/manoj633/chanakya-api#readme"
+  "homepage": "https://github.com/manoj633/chanakya-api#readme",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
 }
