@@ -6,6 +6,8 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import winston from "winston";
+import expressWinston from "express-winston";
+import "winston-daily-rotate-file";
 
 import authRoute from "./routes/authRoutes.js";
 
@@ -14,7 +16,10 @@ dotenv.config();
 
 const connect = async () => {
   try {
-    await mongoose.connect(process.env.MONGO);
+    await mongoose.connect(process.env.MONGO, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     console.log("Connected successfully!");
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
@@ -36,19 +41,37 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Logging
+const logFormat = winston.format.combine(
+  winston.format.timestamp(),
+  winston.format.json()
+);
+
 const logger = winston.createLogger({
   level: "info",
-  format: winston.format.json(),
+  format: logFormat,
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: "combined.log" }),
+    new winston.transports.DailyRotateFile({
+      filename: "logs/application-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "14d",
+    }),
   ],
 });
 
-app.use((req, res, next) => {
-  logger.info(`Request URL: ${req.url}`);
-  next();
-});
+app.use(
+  expressWinston.logger({
+    winstonInstance: logger,
+    meta: true, // optional: control whether you want to log the meta data about the request (default to true)
+    msg: "HTTP {{req.method}} {{req.url}}", // optional: customize the default logging message.
+    expressFormat: true, // Use the default Express/morgan request formatting.
+    colorize: false, // Color the text and status code (default to false)
+    ignoreRoute: function (req, res) {
+      return false;
+    }, // optional: allows to skip some log messages based on request and/or response
+  })
+);
 
 app.use("/api/auth", authRoute);
 
@@ -56,7 +79,13 @@ app.use("/api/auth", authRoute);
 app.use((err, req, res, next) => {
   const errorState = err.status || 500;
   const errorMessage = err.message || "Something went wrong";
-  logger.error(`Error: ${errorMessage}, Stack: ${err.stack}`);
+  logger.error(`Error: ${errorMessage}, Stack: ${err.stack}`, {
+    status: errorState,
+    stack: err.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+  });
   return res.status(errorState).json({
     success: false,
     status: errorState,
@@ -66,23 +95,23 @@ app.use((err, req, res, next) => {
 });
 
 mongoose.connection.on("disconnected", () => {
-  console.log("MongoDb disconnected!");
+  logger.warn("MongoDb disconnected!");
 });
 
 mongoose.connection.on("connected", () => {
-  console.log("MongoDb connected!");
+  logger.info("MongoDb connected!");
 });
 
 const server = app.listen(8080, () => {
   connect();
-  console.log("Connected to backend");
+  logger.info("Connected to backend");
 });
 
 // Graceful shutdown
 process.on("SIGINT", () => {
   server.close(() => {
     mongoose.connection.close(false, () => {
-      console.log("MongoDb connection closed.");
+      logger.info("MongoDb connection closed.");
       process.exit(0);
     });
   });
