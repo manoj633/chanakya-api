@@ -1,6 +1,9 @@
 import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
+import cookieParser from "cookie-parser";
+
+import authRoute from "./routes/authRoutes.js";
 
 const app = express();
 dotenv.config();
@@ -14,10 +17,15 @@ const connect = async () => {
   }
 };
 
+// Middlewares
 app.use((req, res, next) => {
   console.log(req.url);
   next();
 });
+
+app.use(cookieParser());
+app.use(express.json());
+app.use("/api/auth", authRoute);
 
 //Error handling middleware
 app.use((err, req, res, next) => {
