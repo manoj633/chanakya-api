@@ -16,10 +16,7 @@ dotenv.config();
 
 const connect = async () => {
   try {
-    await mongoose.connect(process.env.MONGO, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGO);
     console.log("Connected successfully!");
   } catch (error) {
     console.error("Error connecting to MongoDB:", error);
@@ -102,7 +99,7 @@ mongoose.connection.on("connected", () => {
   logger.info("MongoDb connected!");
 });
 
-const server = app.listen(8080, () => {
+const server = app.listen(8800, () => {
   connect();
   logger.info("Connected to backend");
 });
